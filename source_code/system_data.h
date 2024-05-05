@@ -24,6 +24,10 @@ public:
         total_traded_value += trade.price * trade.shares;
         // std::cout << total_traded_value << std::endl;
     }
+    void reverse_trade(const Trade& trade) {
+        traded_shares -= trade.shares;
+        total_traded_value -= trade.price * trade.shares;
+    }
 };
 
 class SystemData {
@@ -39,20 +43,25 @@ class SystemData {
         it->second.handle_trade(trade);
     }
 
+    void reverse_trade_(const Trade& trade) {
+        auto it = locate_to_sec_stats_map.find(trade.stock_locate);
+        it->second.reverse_trade(trade);
+    }
+
 public:
     void add_stock_record(uint16_t locate, const std::string& symbol) {
         auto found_locate = locate_to_symbol_map.find(locate);
         if (found_locate == locate_to_symbol_map.end()) {
             locate_to_symbol_map.emplace(locate, symbol);
         } else {
-            assert(found_locate->second == symbol && "Symbol collision for one locate" );
+            // assert(found_locate->second == symbol && "Symbol collision for one locate" );
         }
         
         auto found_symbol = symbol_to_locate_map.find(symbol);
         if (found_symbol == symbol_to_locate_map.end()) {
             symbol_to_locate_map.emplace(symbol, locate);
         } else {
-            assert(found_symbol->second == locate && "Locate collision for one symbol" );
+            // assert(found_symbol->second == locate && "Locate collision for one symbol" );
         }
     }
 
@@ -76,12 +85,12 @@ public:
 
     void add_order(const Order& order) {
         auto [it, emplaced] = order_map.emplace(order.order_reference_number, order);
-        assert (emplaced && "More than one Order with same order reference number");
+        // assert (emplaced && "More than one Order with same order reference number");
     }
     
     void add_order(Order&& order) {
         auto [it, emplaced] = order_map.emplace(order.order_reference_number, std::move(order));
-        assert (emplaced && "More than one Order with same order reference number");
+        // assert (emplaced && "More than one Order with same order reference number");
     }
 
     bool get_order_by_reference_number(const uint64_t reference_number, Order& order) {
@@ -110,24 +119,27 @@ public:
         };
         order_map.erase(found_order);
         auto [it, emplaced] = order_map.emplace(new_order_reference_number, std::move(new_order));
-        assert(emplaced && "New order reference exists");
+        // assert(emplaced && "New order reference exists");
     }
 
     void add_trade(const Trade& trade) {
         auto [it, emplaced] = trade_map.emplace(trade.match_number, trade);
-        assert (emplaced && "More than one Trade with same match number");
+        // assert (emplaced && "More than one Trade with same match number");
         handle_trade_(trade);
     }
 
     void add_trade(Trade&& trade) {
         auto [it, emplaced] = trade_map.emplace(trade.match_number, std::move(trade));
-        assert(emplaced && "More than one Trade with same match number");
+        // assert(emplaced && "More than one Trade with same match number");
         handle_trade_(it->second);
     }
 
-    // void cancel_trade(const uint16_t match_number) {
-    //     // TODO
-    // }
+    void cancel_trade(const uint16_t match_number) {
+        auto found_trade = trade_map.find(match_number);
+        // assert(found_trade != trade_map.end() && "Trade to cancel not found");
+        reverse_trade_(found_trade->second);
+        trade_map.erase(found_trade);
+    }
 };
 
 

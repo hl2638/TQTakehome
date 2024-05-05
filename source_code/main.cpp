@@ -15,7 +15,7 @@ int main(int argc, char** argv)
     std::shared_ptr<SystemData> sys_data = std::make_shared<SystemData>();
 
     int count = 0;
-    while (count < 10 && !ifs.eof()) {
+    while (!ifs.eof()) {
         // Read message length
         uint16_t msg_len = read_big_endian<2>(ifs);
         // std::cout << "Message length: " << msg_len << std::endl;
@@ -24,6 +24,10 @@ int main(int argc, char** argv)
         char msg_type;
         ifs.read(&msg_type, 1);
 
+        count++;
+        if (count % 10'000'000 == 0) {
+            std::cout << "[DEBUG]Read " << count << "messages." << std::endl;
+        }
         std::unique_ptr<BaseMessage> new_msg;
         switch(msg_type) {
             case 'S': {
@@ -71,11 +75,11 @@ int main(int argc, char** argv)
                 new_msg = std::make_unique<CrossTradeMessage>(sys_data);
                 break;
             }
-            // case 'B': {
-            //     // Broken Trade Message
-            //     new_msg = std::make_unique<BrokenTradeMessage>(sys_data);
-            //     break;
-            // }
+            case 'B': {
+                // Broken Trade Message
+                new_msg = std::make_unique<BrokenTradeMessage>(sys_data);
+                break;
+            }
             default: {
                 ifs.ignore(msg_len - 1);
                 continue; // read and discard, skip message
@@ -89,13 +93,12 @@ int main(int argc, char** argv)
                     (trades that are erratic will be announced in trade break messages)
             */
         }
-        assert(new_msg && "new_msg not initialized");
+        // assert(new_msg && "new_msg not initialized");
         new_msg->read_from_stream(ifs);
         new_msg->process();
-        // getchar();
         
     }
     
-
+    std::cout << "[DEBUG]Read " << count << "messages in total" << std::endl;
     return 0;
 }

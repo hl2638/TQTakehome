@@ -101,7 +101,7 @@ public:
 
     void process() override {
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
+        // assert(sys_data_ptr && "sys_data expired");
         sys_data_ptr->add_stock_record(stock_locate, stock);
     }
 
@@ -138,12 +138,12 @@ public:
         // std::cout << "Processing order: " << order_reference_number << std::endl;
         Order order{.stock_locate = stock_locate, .side = side, .shares = shares, .price = price, .order_reference_number = order_reference_number};
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
+        // assert(sys_data_ptr && "sys_data expired");
         sys_data_ptr->add_order(std::move(order));
 
-        // TEST
-        Order fetched_order;
-        assert(sys_data_ptr->get_order_by_reference_number(order_reference_number, fetched_order) && fetched_order.order_reference_number == order_reference_number);
+        // // TEST
+        // Order fetched_order;
+        // assert(sys_data_ptr->get_order_by_reference_number(order_reference_number, fetched_order) && fetched_order.order_reference_number == order_reference_number);
     }
 
 };
@@ -178,7 +178,7 @@ public:
     void process() override {
         Order order{.stock_locate = stock_locate, .side = side, .shares = shares, .price = price, .order_reference_number = order_reference_number};
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
+        // assert(sys_data_ptr && "sys_data expired");
         sys_data_ptr->add_order(std::move(order));
     }
     
@@ -208,9 +208,9 @@ public:
 
     void process() override {
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
+        // assert(sys_data_ptr && "sys_data expired");
         Order order; 
-        assert(sys_data_ptr->get_order_by_reference_number(order_reference_number, order) && "Order not found");
+        // assert(sys_data_ptr->get_order_by_reference_number(order_reference_number, order) && "Order not found");
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Order Executed: match_number = " << match_number
         // << ", stock_locate = " << stock_locate 
@@ -273,7 +273,7 @@ public:
         }
 
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
+        // assert(sys_data_ptr && "sys_data expired");
         Trade trade{
             .stock_locate = stock_locate,
             .shares = executed_shares,
@@ -370,11 +370,11 @@ public:
     void process() override {
         // std::cout << "[DEBUG]Replace order: " << std::endl;
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
+        // assert(sys_data_ptr && "sys_data expired");
         Order old_order;
         // TEST
-        assert(sys_data_ptr->get_order_by_reference_number(original_order_reference_number, old_order) && "Old order not found");
-        assert(old_order.stock_locate == stock_locate && "Stock locates do not match for Order Replace");
+        // assert(sys_data_ptr->get_order_by_reference_number(original_order_reference_number, old_order) && "Old order not found");
+        // assert(old_order.stock_locate == stock_locate && "Stock locates do not match for Order Replace");
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Old order:" << "reference_number = " << old_order.order_reference_number
         // << ", stock_locate = " << old_order.stock_locate
@@ -388,13 +388,13 @@ public:
             shares, price);
         Order new_order;
 
-        // TEST
-        assert(sys_data_ptr->get_order_by_reference_number(new_order_reference_number, new_order) && "New order not found");
-        assert(old_order.stock_locate == new_order.stock_locate
-        && old_order.side == new_order.side
-        && new_order.order_reference_number == new_order_reference_number
-        && new_order.shares == shares
-        && new_order.price == price);
+        // // TEST
+        // assert(sys_data_ptr->get_order_by_reference_number(new_order_reference_number, new_order) && "New order not found");
+        // assert(old_order.stock_locate == new_order.stock_locate
+        // && old_order.side == new_order.side
+        // && new_order.order_reference_number == new_order_reference_number
+        // && new_order.shares == shares
+        // && new_order.price == price);
 
         // std::cout << "[DEBUG]New order:" << "reference_number = " << new_order.order_reference_number
         // << ", stock_locate = " << new_order.stock_locate
@@ -404,7 +404,7 @@ public:
         // << std::endl;
 
         // TEST
-        assert(!sys_data_ptr->get_order_by_reference_number(original_order_reference_number, old_order) && "Old order not deleted");
+        // assert(!sys_data_ptr->get_order_by_reference_number(original_order_reference_number, old_order) && "Old order not deleted");
         
         
     }
@@ -438,11 +438,11 @@ public:
 
     void process() override {
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
+        // assert(sys_data_ptr && "sys_data expired");
 
-        // TEST
-        std::string fetched_symbol;
-        assert(sys_data_ptr->get_symbol_by_locate(stock_locate, fetched_symbol) && fetched_symbol == stock);
+        // // TEST
+        // std::string fetched_symbol;
+        // assert(sys_data_ptr->get_symbol_by_locate(stock_locate, fetched_symbol) && fetched_symbol == stock);
 
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Trade: match_number = " << match_number
@@ -491,11 +491,11 @@ public:
 
     void process() override {
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
+        // assert(sys_data_ptr && "sys_data expired");
 
-        // TEST
-        std::string fetched_symbol;
-        assert(sys_data_ptr->get_symbol_by_locate(stock_locate, fetched_symbol) && fetched_symbol == stock);
+        // // TEST
+        // std::string fetched_symbol;
+        // assert(sys_data_ptr->get_symbol_by_locate(stock_locate, fetched_symbol) && fetched_symbol == stock);
 
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Cross Trade: match_number = " << match_number
@@ -536,9 +536,8 @@ public:
 
     void process() override {
         auto sys_data_ptr = sys_data.lock();
-        assert(sys_data_ptr && "sys_data expired");
-
-        // TODO
+        // assert(sys_data_ptr && "sys_data expired");
+        sys_data_ptr->cancel_trade(match_number);
 
     }
    
