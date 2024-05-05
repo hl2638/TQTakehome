@@ -6,5 +6,6 @@ cmake_install.cmake
 CPackConfig.cmake
 CPackSourceConfig.cmake
 Parser
+parser
 data/*
 !data/.gitkeep
