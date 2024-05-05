@@ -526,11 +526,20 @@ class BrokenTradeMessage: public BaseMessage {
     std::weak_ptr<SystemData> sys_data;
     
 public:
+    BrokenTradeMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
         timestamp = read_big_endian<6>(is);
         match_number = read_big_endian<8>(is);
+    }
+
+    void process() override {
+        auto sys_data_ptr = sys_data.lock();
+        assert(sys_data_ptr && "sys_data expired");
+
+        // TODO
+
     }
    
 };

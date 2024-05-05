@@ -37,7 +37,9 @@ public:
         ss << std::setw(2) << std::setfill('0') << hours.count() << ":" 
            << std::setw(2) << std::setfill('0') << minutes.count() << ":" 
            << std::setw(2) << std::setfill('0') << seconds.count() << "."
-           << std::setw(6) << std::setfill('0') << nanoseconds.count();
+           << std::setw(9) << std::setfill('0') << nanoseconds.count()
+        //    << "(" << timestamp_.count() << ")"
+           ;
         return ss.str();
     }
 };

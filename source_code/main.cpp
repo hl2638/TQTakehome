@@ -46,34 +46,38 @@ int main(int argc, char** argv)
                 new_msg = std::make_unique<AddOrderMPIDAttributionMessage>(sys_data);
                 break;
             }
-            // case 'E': {
-            //     // Order Executed
-            //     new_msg = std::make_unique<OrderExecutedMessage>(sys_data);
-            //     break;
-            // }
-            // case 'C': {
-            //     // Order Executed With Price
-            //     new_msg = std::make_unique<OrderExecutedWithPriceMessage>(sys_data);
-            //     break;
-            // }
+            case 'E': {
+                // Order Executed
+                new_msg = std::make_unique<OrderExecutedMessage>(sys_data);
+                break;
+            }
+            case 'C': {
+                // Order Executed With Price
+                new_msg = std::make_unique<OrderExecutedWithPriceMessage>(sys_data);
+                break;
+            }
             case 'U': {
                 // Order Replace
                 new_msg = std::make_unique<OrderReplaceMessage>(sys_data);
                 break;
             }
-            // case 'P': {
-            //     // Trade Message
-            //     new_msg = std::make_unique<TradeMessage>(sys_data);
-            //     break;
-            // }
-            // case 'Q': {
-            //     // Cross Trade Message
-            //     new_msg = std::make_unique<CrossTradeMessage>(sys_data);
+            case 'P': {
+                // Trade Message
+                new_msg = std::make_unique<TradeMessage>(sys_data);
+                break;
+            }
+            case 'Q': {
+                // Cross Trade Message
+                new_msg = std::make_unique<CrossTradeMessage>(sys_data);
+                break;
+            }
+            // case 'B': {
+            //     // Broken Trade Message
+            //     new_msg = std::make_unique<BrokenTradeMessage>(sys_data);
             //     break;
             // }
             default: {
-                char buf[msg_len];
-                ifs.read(buf, msg_len - 1);
+                ifs.ignore(msg_len - 1);
                 continue; // read and discard, skip message
                 break;
             }
