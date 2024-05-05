@@ -72,9 +72,23 @@ public:
     }
 
     void process(SystemData& sd) override {
-        std::cout << TimeOfDay(timestamp).to_string() << " "
-        << "[DEBUG]System message: Event code = " << event_code << std::endl;
-        // TODO handle system events
+        sd.update_timestamp(timestamp);
+        // std::cout << TimeOfDay(timestamp).to_string() << " "
+        // << "[DEBUG]System message: Event code = " << event_code << std::endl;
+
+        switch(event_code) {
+            case 'Q': {
+                sd.market_open();
+                break;
+            }
+            case 'M': {
+                sd.market_close();
+                break;
+            }
+            default: {
+                break;
+            }
+        }
     }
 };
 
@@ -95,6 +109,7 @@ public:
     }
 
     void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         sd.add_stock_record(stock_locate, stock);
     }
 
@@ -127,6 +142,7 @@ public:
     }
     
     void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         // std::cout << "Processing order: " << order_reference_number << std::endl;
         Order order{.stock_locate = stock_locate, .side = side, .shares = shares, .price = price, .order_reference_number = order_reference_number};
         sd.add_order(std::move(order));
@@ -161,6 +177,7 @@ public:
     }
     
     void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         Order order{.stock_locate = stock_locate, .side = side, .shares = shares, .price = price, .order_reference_number = order_reference_number};
         sd.add_order(std::move(order));
     }
@@ -186,6 +203,7 @@ public:
     }
 
     void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         Order order; 
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Order Executed: match_number = " << match_number
@@ -230,6 +248,7 @@ public:
     }
 
    void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         // Do not calculate into VWAP if printable is "N"
 
         // std::cout << TimeOfDay(timestamp).to_string() << " "
@@ -337,6 +356,7 @@ public:
     }
 
     void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         // std::cout << "[DEBUG]Replace order: " << std::endl;
         Order old_order;
         // std::cout << TimeOfDay(timestamp).to_string() << " "
@@ -385,6 +405,7 @@ public:
     }
 
     void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Trade: match_number = " << match_number
         // << ", stock_locate = " << stock_locate 
@@ -428,6 +449,7 @@ public:
     }
 
     void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Cross Trade: match_number = " << match_number
         // << ", stock_locate = " << stock_locate 
@@ -463,6 +485,7 @@ public:
     }
 
     void process(SystemData& sd) override {
+        sd.update_timestamp(timestamp);
         sd.cancel_trade(match_number);
     }
    

@@ -5,13 +5,14 @@
 #include <string>
 #include <unordered_map>
 #include <iostream>
+#include <iomanip>
 #include "trade_types.h"
+#include "utils.h"
 
 class SecurityStats {
     uint16_t stock_locate;
     uint64_t traded_shares;
     float total_traded_value;
-    // TODO add shared ptrs to orders and trades?
 public:
     SecurityStats(const uint16_t locate):
     stock_locate{locate}, traded_shares{0}, total_traded_value{0} {}
@@ -44,12 +45,14 @@ public:
 
     void market_close() {
         market_open_ = false;
-        print_vwaps_();
+        print_vwaps_(0, true);
     }
 
     void update_timestamp(const uint64_t timestamp) {
-        if (market_open_ && get_hour_by_timestamp(latest_timestamp_) < get_hour_by_timestamp(timestamp)) {
-            print_vwaps_();
+        int current_hour = get_hour_by_timestamp(latest_timestamp_);
+        int potential_next_hour = get_hour_by_timestamp(timestamp);
+        if (market_open_ && current_hour < potential_next_hour) {
+            print_vwaps_(potential_next_hour, false);
         }
         latest_timestamp_ = timestamp; 
     }
@@ -190,7 +193,12 @@ private:
         I don't think it's necessary to print on a separate thread
         since it would lock and parser would block anyways
     */
-    void print_vwaps_() {
+    void print_vwaps_(const int hour, const bool market_close) {
+        if (market_close) {
+            os_ << "Market Close" << std::endl;
+        } else {
+            os_ << std::setw(2) << std::setfill('0') << hour << ":00:00" << std::endl;
+        }
         // TODO
     }
 };

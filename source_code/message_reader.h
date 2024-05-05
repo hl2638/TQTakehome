@@ -10,11 +10,11 @@
 class MessageReader {
 public:
     MessageReader(std::istream& istream): is_{istream} {}
-    void start() {
+    void start_reading() {
         reader_thread_ = std::thread(&MessageReader::read_from_stream, this);
     }
 
-    void stop() {
+    void stop_reading() {
         if (reader_thread_.joinable()) {
             reader_thread_.join();
         }

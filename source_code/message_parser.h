@@ -8,30 +8,30 @@
 
 class MessageParser {
 public:
-    MessageParser() {}
+    MessageParser(MessageReader& reader, SystemData& sd)
+    : reader_{reader}, sd_{sd} {}
 
-    // Function to start parsing messages
-    void start_parsing(MessageReader& reader, SystemData& sd) {
-        parser_thread_ = std::thread(&MessageParser::parse_messages, this, std::ref(reader), std::ref(sd));
+    void start_parsing() {
+        parser_thread_ = std::thread(&MessageParser::parse_messages_, this);
     }
 
-    // Function to stop parsing messages
-    void stopParsing() {
+    void stop_parsing() {
         if (parser_thread_.joinable()) {
             parser_thread_.join();
         }
     }
 
 private:
-    // Function to parse messages
-    void parse_messages(MessageReader& reader, SystemData& sd) {
+    MessageReader& reader_;
+    SystemData& sd_;
+
+    void parse_messages_() {
         while (true) {
             std::unique_ptr<BaseMessage> msg;
-            if (!reader.get_next_message(msg)) {
+            if (!reader_.get_next_message(msg)) {
                 break;
             }
-            // Process the message
-            msg->process(sd);
+            msg->process(sd_);
         }
     }
 
