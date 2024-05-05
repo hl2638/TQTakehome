@@ -9,3 +9,5 @@ Parser
 parser
 data/*
 !data/.gitkeep
+output/*
+!output/.gitkeep

@@ -15,7 +15,7 @@ class SecurityStats {
 public:
     SecurityStats(const uint16_t locate):
     stock_locate{locate}, traded_shares{0}, total_traded_value{0} {}
-    void handle_trade(const Trade& trade) {
+    bool handle_trade(const Trade& trade) {
         // std::cout << "[DEBUG]Stock_locate: " << std::endl;
         // std::cout << "shares: " << traded_shares << " -> ";
         traded_shares += trade.shares;
@@ -23,46 +23,56 @@ public:
         // std::cout << "traded value: " << total_traded_value << " -> ";
         total_traded_value += trade.price * trade.shares;
         // std::cout << total_traded_value << std::endl;
+
+        return true;
     }
-    void reverse_trade(const Trade& trade) {
+    bool reverse_trade(const Trade& trade) {
         traded_shares -= trade.shares;
         total_traded_value -= trade.price * trade.shares;
+        return true;
     }
 };
 
 class SystemData {
-    std::unordered_map<uint16_t, std::string> locate_to_symbol_map;
-    std::unordered_map<std::string, uint16_t> symbol_to_locate_map;
-    std::unordered_map<uint16_t, SecurityStats> locate_to_sec_stats_map;
-    std::unordered_map<uint64_t, Order> order_map; // key = order reference number
-    std::unordered_map<uint64_t, Trade> trade_map; // key = match number
-
-    void handle_trade_(const Trade& trade) {
-        // Insert entry if stock does not exist 
-        auto [it, emplaced] = locate_to_sec_stats_map.emplace(trade.stock_locate, trade.stock_locate);
-        it->second.handle_trade(trade);
-    }
-
-    void reverse_trade_(const Trade& trade) {
-        auto it = locate_to_sec_stats_map.find(trade.stock_locate);
-        it->second.reverse_trade(trade);
-    }
-
 public:
-    void add_stock_record(uint16_t locate, const std::string& symbol) {
+
+    SystemData(std::ostream& os): os_{os} {}
+
+    void market_open() {
+        market_open_ = true;
+    }
+
+    void market_close() {
+        market_open_ = false;
+        print_vwaps_();
+    }
+
+    void update_timestamp(const uint64_t timestamp) {
+        if (market_open_ && get_hour_by_timestamp(latest_timestamp_) < get_hour_by_timestamp(timestamp)) {
+            print_vwaps_();
+        }
+        latest_timestamp_ = timestamp; 
+    }
+    bool add_stock_record(uint16_t locate, const std::string& symbol) {
         auto found_locate = locate_to_symbol_map.find(locate);
         if (found_locate == locate_to_symbol_map.end()) {
             locate_to_symbol_map.emplace(locate, symbol);
         } else {
-            // assert(found_locate->second == symbol && "Symbol collision for one locate" );
+            if (found_locate->second != symbol) {
+                return false;
+            }
         }
         
         auto found_symbol = symbol_to_locate_map.find(symbol);
         if (found_symbol == symbol_to_locate_map.end()) {
             symbol_to_locate_map.emplace(symbol, locate);
         } else {
-            // assert(found_symbol->second == locate && "Locate collision for one symbol" );
+            if (found_symbol->second != locate) {
+                return false;
+            }
         }
+
+        return true;
     }
 
     bool get_symbol_by_locate(const uint16_t locate, std::string& symbol) {
@@ -83,14 +93,14 @@ public:
         return true;
     }
 
-    void add_order(const Order& order) {
+    bool add_order(const Order& order) {
         auto [it, emplaced] = order_map.emplace(order.order_reference_number, order);
-        // assert (emplaced && "More than one Order with same order reference number");
+        return emplaced;
     }
     
-    void add_order(Order&& order) {
+    bool add_order(Order&& order) {
         auto [it, emplaced] = order_map.emplace(order.order_reference_number, std::move(order));
-        // assert (emplaced && "More than one Order with same order reference number");
+        return emplaced;
     }
 
     bool get_order_by_reference_number(const uint64_t reference_number, Order& order) {
@@ -102,13 +112,15 @@ public:
         return true;
     }
 
-    void replace_order(
+    bool replace_order(
         const uint64_t original_order_reference_number, 
         const uint64_t new_order_reference_number, 
         const uint32_t shares, const float price
     ) {
         auto found_order = order_map.find(original_order_reference_number);
-        assert (found_order != order_map.end() && "Original order reference not found");
+        if (found_order == order_map.end()) {
+            return false;
+        }
         const Order& old_order = found_order->second;
         Order new_order{
             .stock_locate = old_order.stock_locate,
@@ -119,19 +131,24 @@ public:
         };
         order_map.erase(found_order);
         auto [it, emplaced] = order_map.emplace(new_order_reference_number, std::move(new_order));
-        // assert(emplaced && "New order reference exists");
+        
+        return emplaced;
     }
 
-    void add_trade(const Trade& trade) {
+    bool add_trade(const Trade& trade) {
         auto [it, emplaced] = trade_map.emplace(trade.match_number, trade);
-        // assert (emplaced && "More than one Trade with same match number");
-        handle_trade_(trade);
+        if (!emplaced) {
+            return false;
+        }
+        return handle_trade_(trade);
     }
 
-    void add_trade(Trade&& trade) {
+    bool add_trade(Trade&& trade) {
         auto [it, emplaced] = trade_map.emplace(trade.match_number, std::move(trade));
-        // assert(emplaced && "More than one Trade with same match number");
-        handle_trade_(it->second);
+        if (!emplaced) {
+            return false;
+        }
+        return handle_trade_(it->second);
     }
 
     void cancel_trade(const uint16_t match_number) {
@@ -139,6 +156,42 @@ public:
         // assert(found_trade != trade_map.end() && "Trade to cancel not found");
         reverse_trade_(found_trade->second);
         trade_map.erase(found_trade);
+    }
+
+private:
+    std::unordered_map<uint16_t, std::string> locate_to_symbol_map;
+    std::unordered_map<std::string, uint16_t> symbol_to_locate_map;
+    std::unordered_map<uint16_t, SecurityStats> locate_to_sec_stats_map;
+    std::unordered_map<uint64_t, Order> order_map; // key = order reference number
+    std::unordered_map<uint64_t, Trade> trade_map; // key = match number
+
+    uint64_t latest_timestamp_ = 0;
+    bool market_open_ = false;
+    std::ostream& os_;
+
+
+    bool handle_trade_(const Trade& trade) {
+        // Insert entry if stock does not exist 
+        auto [it, emplaced] = locate_to_sec_stats_map.emplace(trade.stock_locate, trade.stock_locate);
+        return it->second.handle_trade(trade);
+    }
+
+    bool reverse_trade_(const Trade& trade) {
+        auto it = locate_to_sec_stats_map.find(trade.stock_locate);
+        if (it == locate_to_sec_stats_map.end()) {
+            return false;
+        }
+        return it->second.reverse_trade(trade);
+    }
+
+    /*
+        Only one thread has access to SystemData,
+        so no need to lock when printing.
+        I don't think it's necessary to print on a separate thread
+        since it would lock and parser would block anyways
+    */
+    void print_vwaps_() {
+        // TODO
     }
 };
 

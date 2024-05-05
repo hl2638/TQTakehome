@@ -15,6 +15,10 @@ uint64_t read_big_endian(std::istream& is) {
     return result;
 }
 
+inline int get_hour_by_timestamp(uint64_t timestamp) {
+    return (timestamp / (1000000000 * 60 * 60)) % 24;
+}
+
 class TimeOfDay {
 private:
     std::chrono::nanoseconds timestamp_;

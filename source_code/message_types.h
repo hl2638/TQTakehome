@@ -52,7 +52,7 @@ public:
     // virtual void print(std::ostream& os = std::cout) {
     //     os << "print() not implemented for this type of message" << std::endl;
     // }
-    virtual void process() = 0;
+    virtual void process(SystemData& sd) = 0;
     virtual ~BaseMessage() {}
 };
 
@@ -63,10 +63,7 @@ class SystemEventMessage: public BaseMessage {
     uint64_t timestamp; // 6 bytes
     char event_code;
 
-    std::weak_ptr<SystemData> sys_data;
-
 public:
-    SystemEventMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -74,7 +71,7 @@ public:
         is.read(&event_code, 1);
     }
 
-    void process() override {
+    void process(SystemData& sd) override {
         std::cout << TimeOfDay(timestamp).to_string() << " "
         << "[DEBUG]System message: Event code = " << event_code << std::endl;
         // TODO handle system events
@@ -88,9 +85,7 @@ class StockDirectoryMessage: public BaseMessage {
     std::string stock; // 8 bytes
     // 20 bytes of uninteresting data
 
-    std::weak_ptr<SystemData> sys_data;
 public:
-    StockDirectoryMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -99,10 +94,8 @@ public:
         skip_bytes(20, is);
     }
 
-    void process() override {
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
-        sys_data_ptr->add_stock_record(stock_locate, stock);
+    void process(SystemData& sd) override {
+        sd.add_stock_record(stock_locate, stock);
     }
 
 };
@@ -120,7 +113,6 @@ class AddOrderMessage: public BaseMessage {
     std::weak_ptr<SystemData> sys_data;
 
 public:
-    AddOrderMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
 
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
@@ -134,16 +126,11 @@ public:
 
     }
     
-    void process() override {
+    void process(SystemData& sd) override {
         // std::cout << "Processing order: " << order_reference_number << std::endl;
         Order order{.stock_locate = stock_locate, .side = side, .shares = shares, .price = price, .order_reference_number = order_reference_number};
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
-        sys_data_ptr->add_order(std::move(order));
+        sd.add_order(std::move(order));
 
-        // // TEST
-        // Order fetched_order;
-        // assert(sys_data_ptr->get_order_by_reference_number(order_reference_number, fetched_order) && fetched_order.order_reference_number == order_reference_number);
     }
 
 };
@@ -159,10 +146,8 @@ class AddOrderMPIDAttributionMessage: public BaseMessage {
     float price; // read as 4 bytes unsigned int, last 4 digits are after decimal
     // attribution 4 bytes, not interested
     
-    std::weak_ptr<SystemData> sys_data;
 
 public:
-    AddOrderMPIDAttributionMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -175,16 +160,13 @@ public:
         skip_bytes(4, is);
     }
     
-    void process() override {
+    void process(SystemData& sd) override {
         Order order{.stock_locate = stock_locate, .side = side, .shares = shares, .price = price, .order_reference_number = order_reference_number};
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
-        sys_data_ptr->add_order(std::move(order));
+        sd.add_order(std::move(order));
     }
     
 };
 
-// TODO check ?? Same match_number should only be calculated once. Except for broken message.
 class OrderExecutedMessage: public BaseMessage {
     uint16_t stock_locate;
     // ignore tracking number 2 bytes, not interested
@@ -192,11 +174,8 @@ class OrderExecutedMessage: public BaseMessage {
     uint64_t order_reference_number;
     uint32_t executed_shares;
     uint64_t match_number;
-    
-    std::weak_ptr<SystemData> sys_data;
 
 public:
-    OrderExecutedMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -206,11 +185,8 @@ public:
         match_number = read_big_endian<8>(is);
     }
 
-    void process() override {
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
+    void process(SystemData& sd) override {
         Order order; 
-        // assert(sys_data_ptr->get_order_by_reference_number(order_reference_number, order) && "Order not found");
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Order Executed: match_number = " << match_number
         // << ", stock_locate = " << stock_locate 
@@ -225,7 +201,7 @@ public:
             .match_number = match_number
         };
 
-        sys_data_ptr->add_trade(std::move(trade));
+        sd.add_trade(std::move(trade));
 
     }
    
@@ -241,10 +217,7 @@ class OrderExecutedWithPriceMessage: public BaseMessage {
     bool printable; // read as Y or N
     float execution_price; // read as 4 bytes unsigned int, last 4 digits are after decimal
     
-    std::weak_ptr<SystemData> sys_data;
-    
 public:
-    OrderExecutedWithPriceMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -256,7 +229,7 @@ public:
         get_price_4digits(execution_price, is);
     }
 
-   void process() override {
+   void process(SystemData& sd) override {
         // Do not calculate into VWAP if printable is "N"
 
         // std::cout << TimeOfDay(timestamp).to_string() << " "
@@ -272,8 +245,6 @@ public:
             return;
         }
 
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
         Trade trade{
             .stock_locate = stock_locate,
             .shares = executed_shares,
@@ -281,7 +252,7 @@ public:
             .match_number = match_number
         };
 
-        sys_data_ptr->add_trade(std::move(trade));
+        sd.add_trade(std::move(trade));
         
     }
 };
@@ -353,10 +324,8 @@ class OrderReplaceMessage: public BaseMessage {
     uint32_t shares;
     float price; // read as 4 bytes unsigned int, last 4 digits are after decimal
     
-    std::weak_ptr<SystemData> sys_data;
 
 public:
-    OrderReplaceMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -367,14 +336,9 @@ public:
         get_price_4digits(price, is);
     }
 
-    void process() override {
+    void process(SystemData& sd) override {
         // std::cout << "[DEBUG]Replace order: " << std::endl;
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
         Order old_order;
-        // TEST
-        // assert(sys_data_ptr->get_order_by_reference_number(original_order_reference_number, old_order) && "Old order not found");
-        // assert(old_order.stock_locate == stock_locate && "Stock locates do not match for Order Replace");
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Old order:" << "reference_number = " << old_order.order_reference_number
         // << ", stock_locate = " << old_order.stock_locate
@@ -383,18 +347,9 @@ public:
         // << ", price = " << old_order.price
         // << std::endl;
 
-        sys_data_ptr->replace_order(
+        sd.replace_order(
             original_order_reference_number, new_order_reference_number,
             shares, price);
-        Order new_order;
-
-        // // TEST
-        // assert(sys_data_ptr->get_order_by_reference_number(new_order_reference_number, new_order) && "New order not found");
-        // assert(old_order.stock_locate == new_order.stock_locate
-        // && old_order.side == new_order.side
-        // && new_order.order_reference_number == new_order_reference_number
-        // && new_order.shares == shares
-        // && new_order.price == price);
 
         // std::cout << "[DEBUG]New order:" << "reference_number = " << new_order.order_reference_number
         // << ", stock_locate = " << new_order.stock_locate
@@ -402,10 +357,6 @@ public:
         // << ", shares = " << new_order.shares
         // << ", price = " << new_order.price
         // << std::endl;
-
-        // TEST
-        // assert(!sys_data_ptr->get_order_by_reference_number(original_order_reference_number, old_order) && "Old order not deleted");
-        
         
     }
 };
@@ -420,11 +371,8 @@ class TradeMessage: public BaseMessage {
     std::string stock;
     float price; // read as 4 bytes unsigned int, last 4 digits are after decimal
     uint64_t match_number;
-    
-    std::weak_ptr<SystemData> sys_data;
 
 public:
-    TradeMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -436,14 +384,7 @@ public:
         match_number = read_big_endian<8>(is);
     }
 
-    void process() override {
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
-
-        // // TEST
-        // std::string fetched_symbol;
-        // assert(sys_data_ptr->get_symbol_by_locate(stock_locate, fetched_symbol) && fetched_symbol == stock);
-
+    void process(SystemData& sd) override {
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Trade: match_number = " << match_number
         // << ", stock_locate = " << stock_locate 
@@ -458,7 +399,7 @@ public:
             .match_number = match_number
         };
 
-        sys_data_ptr->add_trade(std::move(trade));
+        sd.add_trade(std::move(trade));
 
     }
    
@@ -474,10 +415,7 @@ class CrossTradeMessage: public BaseMessage {
     uint64_t match_number;
     // Ignore cross type 1 byte - not interested.
     
-    std::weak_ptr<SystemData> sys_data;
-    
 public:
-    CrossTradeMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -489,14 +427,7 @@ public:
         skip_bytes(1, is); // skip cross type 1 byte.
     }
 
-    void process() override {
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
-
-        // // TEST
-        // std::string fetched_symbol;
-        // assert(sys_data_ptr->get_symbol_by_locate(stock_locate, fetched_symbol) && fetched_symbol == stock);
-
+    void process(SystemData& sd) override {
         // std::cout << TimeOfDay(timestamp).to_string() << " "
         // << "[DEBUG]Cross Trade: match_number = " << match_number
         // << ", stock_locate = " << stock_locate 
@@ -511,7 +442,7 @@ public:
             .match_number = match_number
         };
 
-        sys_data_ptr->add_trade(std::move(trade));
+        sd.add_trade(std::move(trade));
 
     }
 };
@@ -523,10 +454,7 @@ class BrokenTradeMessage: public BaseMessage {
     uint64_t timestamp; // 6 bytes
     uint64_t match_number;
     
-    std::weak_ptr<SystemData> sys_data;
-    
 public:
-    BrokenTradeMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
     void read_from_stream(std::istream& is) override {
         stock_locate = read_big_endian<2>(is);
         skip_bytes(2, is); // skip tracking number
@@ -534,11 +462,8 @@ public:
         match_number = read_big_endian<8>(is);
     }
 
-    void process() override {
-        auto sys_data_ptr = sys_data.lock();
-        // assert(sys_data_ptr && "sys_data expired");
-        sys_data_ptr->cancel_trade(match_number);
-
+    void process(SystemData& sd) override {
+        sd.cancel_trade(match_number);
     }
    
 };

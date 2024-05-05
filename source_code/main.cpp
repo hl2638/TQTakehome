@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 
         count++;
         if (count % 10'000'000 == 0) {
-            std::cout << "[DEBUG]Read " << count << "messages." << std::endl;
+            std::cout << "[DEBUG]Read " << count << " messages." << std::endl;
         }
         std::unique_ptr<BaseMessage> new_msg;
         switch(msg_type) {
@@ -99,6 +99,6 @@ int main(int argc, char** argv)
         
     }
     
-    std::cout << "[DEBUG]Read " << count << "messages in total" << std::endl;
+    std::cout << "[DEBUG]Read " << count << " messages in total" << std::endl;
     return 0;
 }
