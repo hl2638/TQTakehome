@@ -4,6 +4,7 @@
 #include <cassert>
 #include <string>
 #include <unordered_map>
+#include <filesystem>
 #include <iostream>
 #include <iomanip>
 #include "trade_types.h"
@@ -41,7 +42,15 @@ public:
 class SystemData {
 public:
 
-    SystemData(std::ostream& os): os_{os} {}
+    SystemData(const std::string& output_dir_path): output_dir_{output_dir_path} {
+        if (!std::filesystem::exists(output_dir_path)) {
+            try {
+                std::filesystem::create_directories(output_dir_path);
+            } catch (...) {
+                std::cerr << "Error creating directory: " << output_dir_path << std::endl;
+            }
+        }
+    }
 
     void market_open() {
         market_open_ = true;
@@ -158,11 +167,16 @@ public:
         return handle_trade_(it->second);
     }
 
-    void cancel_trade(const uint16_t match_number) {
+    bool cancel_trade(const uint16_t match_number) {
         auto found_trade = trade_map.find(match_number);
-        // assert(found_trade != trade_map.end() && "Trade to cancel not found");
-        reverse_trade_(found_trade->second);
+        if (found_trade == trade_map.end()) {
+            return false;
+        }
+        if (!reverse_trade_(found_trade->second)) {
+            return false;
+        }
         trade_map.erase(found_trade);
+        return true;
     }
 
 private:
@@ -174,7 +188,8 @@ private:
 
     uint64_t latest_timestamp_ = 0;
     bool market_open_ = false;
-    std::ostream& os_;
+    std::string output_dir_;
+    std::ofstream ofs_;
 
 
     bool handle_trade_(const Trade& trade) {
@@ -198,17 +213,25 @@ private:
         since it would lock and parser would block anyways
     */
     void print_vwaps_(const int hour, const bool market_close) {
+        std::string file_name = (market_close ? "market_close" : std::to_string(hour)) + ".log";
+        std::string output_file =  output_dir_ + "/" + file_name;
+        ofs_.open(output_file);
+        if (!ofs_.is_open()) {
+            std::cerr << "Error opening output file " << output_file << std::endl;
+            return;
+        }
         if (market_close) {
-            os_ << "Market Close" << std::endl;
+            ofs_ << "Market Close" << std::endl;
         } else {
-            os_ << std::setw(2) << std::setfill('0') << hour << ":00:00" << std::endl;
+            ofs_ << std::setw(2) << std::setfill('0') << hour << ":00:00" << std::endl;
         }
         for (const auto& [locate, stats]: locate_to_sec_stats_map) {
-            os_ << std::left << std::setw(8) << locate_to_symbol_map.at(locate) << " "
+            ofs_ << std::left << std::setw(8) << locate_to_symbol_map.at(locate) << " "
             << std::fixed << std::setprecision(4) << stats.get_vwap()
             << std::endl;
         }
-        os_ << "-------------------------------" << std::endl << std::endl;
+        ofs_ << "-------------------------------" << std::endl << std::endl;
+        ofs_.close();
     }
 };
 

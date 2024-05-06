@@ -9,8 +9,13 @@
 
 class MessageReader {
 public:
-    MessageReader(std::istream& istream): is_{istream} {}
+    MessageReader(const std::string& file_path): file_path_{file_path} {}
     void start_reading() {
+        ifs_.open(file_path_);
+        if (!ifs_.is_open()) {
+            std::cerr << "Error opening file " << file_path_ << std::endl;
+            return;
+        }
         reader_thread_ = std::thread(&MessageReader::read_from_stream, this);
     }
 
@@ -20,7 +25,7 @@ public:
         }
     }
 
-    bool is_finished() const {
+    bool ifs_finished() const {
         return finished_reading_;
     }
 
@@ -36,7 +41,8 @@ public:
     }
 
 private:
-    std::istream& is_;
+    std::string file_path_;
+    std::ifstream ifs_;
     std::queue<std::unique_ptr<BaseMessage>> msg_queue_;
     int msg_count = 0;
     std::thread reader_thread_;
@@ -45,13 +51,13 @@ private:
     bool finished_reading_ = false;
 
     void read_from_stream() {
-        while (!is_.eof()) {
+        while (!ifs_.eof()) {
             // Read message length
-            uint16_t msg_len = read_big_endian<2>(is_);
+            uint16_t msg_len = read_big_endian<2>(ifs_);
 
             // Read first byte: message type
             char msg_type;
-            is_.read(&msg_type, 1);
+            ifs_.read(&msg_type, 1);
 
             msg_count++;
             // [DEBUG]
@@ -112,7 +118,7 @@ private:
                     break;
                 }
                 default: {
-                    is_.ignore(msg_len - 1);
+                    ifs_.ignore(msg_len - 1);
                     continue; // read and discard, skip message
                     break;
                 }
@@ -124,7 +130,7 @@ private:
                         (trades that are erratic will be announced in trade break messages)
                 */
             }
-            new_msg->read_from_stream(is_);
+            new_msg->read_from_stream(ifs_);
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 msg_queue_.push(std::move(new_msg));
