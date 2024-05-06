@@ -32,6 +32,10 @@ public:
         total_traded_value -= trade.price * trade.shares;
         return true;
     }
+
+    inline float get_vwap() const {
+        return total_traded_value / traded_shares;
+    }
 };
 
 class SystemData {
@@ -199,7 +203,12 @@ private:
         } else {
             os_ << std::setw(2) << std::setfill('0') << hour << ":00:00" << std::endl;
         }
-        // TODO
+        for (const auto& [locate, stats]: locate_to_sec_stats_map) {
+            os_ << std::left << std::setw(8) << locate_to_symbol_map.at(locate) << " "
+            << std::setprecision(4) << stats.get_vwap()
+            << std::endl;
+        }
+        std::cout << "-------------------------------" << std::endl << std::endl;
     }
 };
 
