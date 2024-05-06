@@ -20,4 +20,5 @@ The output will be a directory with multiple csv files or human-readable log fil
 
 - If `'csv' or 'log'` not specified, by default the output will be csv. If `output_directory` not specified, by default output will go to `output/vwap`.
 
-So the simplest command would be `./parser`. The program will find data file named `01302019.NASDAQ_ITCH50` under `data/`, and output a csv for each hour under `output/vwap`.
+**So the simplest command would be `./parser`**. 
+The program will find data file named `01302019.NASDAQ_ITCH50` under `data/`, and output a csv for each hour under `output/vwap`.
