@@ -77,10 +77,6 @@ public:
                 sd.market_open();
                 break;
             }
-            case 'M': {
-                sd.market_close();
-                break;
-            }
             default: {
                 break;
             }
@@ -397,7 +393,7 @@ public:
 
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
-        
+
         sd.cancel_trade(match_number);
     }
    

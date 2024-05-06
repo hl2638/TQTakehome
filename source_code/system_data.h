@@ -38,7 +38,13 @@ public:
 class SystemData {
 public:
 
-    SystemData(const std::string& output_dir_path): output_dir_{output_dir_path} {
+    enum class PrintFormat {
+        csv,
+        log
+    };
+
+    SystemData(const std::string& output_dir_path, const PrintFormat& format)
+    : output_dir_{output_dir_path}, print_format_{format} {
         if (!std::filesystem::exists(output_dir_path)) {
             try {
                 std::filesystem::create_directories(output_dir_path);
@@ -52,16 +58,11 @@ public:
         market_open_ = true;
     }
 
-    void market_close() {
-        market_open_ = false;
-        print_vwaps_(0, true);
-    }
-
     void update_timestamp(const uint64_t timestamp) {
         int current_hour = get_hour_by_timestamp(latest_timestamp_);
         int potential_next_hour = get_hour_by_timestamp(timestamp);
         if (market_open_ && current_hour < potential_next_hour) {
-            print_vwaps_(potential_next_hour, false);
+            print_vwaps_(potential_next_hour);
         }
         latest_timestamp_ = timestamp; 
     }
@@ -187,6 +188,7 @@ private:
     std::string output_dir_;
     std::ofstream ofs_;
 
+    PrintFormat print_format_;
 
     bool handle_trade_(const Trade& trade) {
         // Insert entry if stock does not exist 
@@ -208,25 +210,52 @@ private:
         I don't think it's necessary to print on a separate thread
         since it would lock and parser would block anyways
     */
-    void print_vwaps_(const int hour, const bool market_close) {
-        std::string file_name = (market_close ? "market_close" : std::to_string(hour)) + ".log";
+    void print_vwaps_(const int hour) {
+        switch(print_format_) {
+            case PrintFormat::csv: {
+                print_vwaps_csv_(hour);
+                break;
+            }
+            case PrintFormat::log: {
+                print_vwaps_log_(hour);
+            }
+        }
+    }
+
+    void print_vwaps_log_(const int hour) {
+        std::string file_name = std::to_string(hour) + ".log";
         std::string output_file =  output_dir_ + "/" + file_name;
         ofs_.open(output_file);
         if (!ofs_.is_open()) {
             std::cerr << "Error opening output file " << output_file << std::endl;
             return;
         }
-        if (market_close) {
-            ofs_ << "Market Close" << std::endl;
-        } else {
-            ofs_ << std::setw(2) << std::setfill('0') << hour << ":00:00" << std::endl;
-        }
+        
+        ofs_ << std::setw(2) << std::setfill('0') << hour << ":00:00" << std::endl;
+
         for (const auto& [locate, stats]: locate_to_sec_stats_map) {
             ofs_ << std::left << std::setw(8) << locate_to_symbol_map.at(locate) << " "
             << std::fixed << std::setprecision(4) << stats.get_vwap()
             << std::endl;
         }
         ofs_ << "-------------------------------" << std::endl << std::endl;
+        ofs_.close();
+    }
+
+    void print_vwaps_csv_(const int hour) {
+        std::string file_name = std::to_string(hour) + ".csv";
+        std::string output_file =  output_dir_ + "/" + file_name;
+        ofs_.open(output_file);
+        if (!ofs_.is_open()) {
+            std::cerr << "Error opening output file " << output_file << std::endl;
+            return;
+        }
+        ofs_ << "hour,symbol,vwap" << std::endl;
+        for (const auto& [locate, stats]: locate_to_sec_stats_map) {
+            ofs_ << hour << "," 
+            << locate_to_symbol_map.at(locate) << "," 
+            << std::fixed << std::setprecision(4) << stats.get_vwap() << std::endl;
+        }
         ofs_.close();
     }
 };
