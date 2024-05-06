@@ -22,6 +22,7 @@ static inline void get_stock_8bytes(std::string& stock, std::istream& is) {
     stock.assign(stock_buf, 8);
 }
 
+/* We could actually ignore the side of orders for the purpose of VWAP but anyways */
 static inline void get_buy_sell_side(BuySellSide& side, std::istream& is) {
     char buy_sell_buf;
     is.read(&buy_sell_buf, 1);
@@ -49,9 +50,6 @@ static inline void skip_bytes(size_t n_bytes, std::istream& is) {
 class BaseMessage {
 public:
     virtual void read_from_stream(std::istream& is) = 0;
-    // virtual void print(std::ostream& os = std::cout) {
-    //     os << "print() not implemented for this type of message" << std::endl;
-    // }
     virtual void process(SystemData& sd) = 0;
     virtual ~BaseMessage() {}
 };
@@ -73,8 +71,6 @@ public:
 
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
-        // std::cout << TimeOfDay(timestamp).to_string() << " "
-        // << "[DEBUG]System message: Event code = " << event_code << std::endl;
 
         switch(event_code) {
             case 'Q': {
@@ -124,8 +120,6 @@ class AddOrderMessage: public BaseMessage {
     uint32_t shares;
     std::string stock;
     float price; // read as 4 bytes unsigned int, last 4 digits are after decimal
-    
-    std::weak_ptr<SystemData> sys_data;
 
 public:
 
@@ -143,8 +137,13 @@ public:
     
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
-        // std::cout << "Processing order: " << order_reference_number << std::endl;
-        Order order{.stock_locate = stock_locate, .side = side, .shares = shares, .price = price, .order_reference_number = order_reference_number};
+        Order order{
+            .stock_locate = stock_locate, 
+            .side = side, 
+            .shares = shares, 
+            .price = price, 
+            .order_reference_number = order_reference_number
+            };
         sd.add_order(std::move(order));
 
     }
@@ -178,7 +177,13 @@ public:
     
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
-        Order order{.stock_locate = stock_locate, .side = side, .shares = shares, .price = price, .order_reference_number = order_reference_number};
+        Order order{
+            .stock_locate = stock_locate, 
+            .side = side, 
+            .shares = shares, 
+            .price = price, 
+            .order_reference_number = order_reference_number
+            };
         sd.add_order(std::move(order));
     }
     
@@ -204,14 +209,9 @@ public:
 
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
+
         Order order; 
-        // std::cout << TimeOfDay(timestamp).to_string() << " "
-        // << "[DEBUG]Order Executed: match_number = " << match_number
-        // << ", stock_locate = " << stock_locate 
-        // << ", executed_shares = " << executed_shares
-        // << ", order_reference_number = " << order_reference_number
-        // << ", side: " << order.side << ", price: " << order.price
-        // << std::endl;
+        sd.get_order_by_reference_number(order_reference_number, order);
         Trade trade{
             .stock_locate = stock_locate,
             .shares = executed_shares,
@@ -249,18 +249,9 @@ public:
 
    void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
+
         // Do not calculate into VWAP if printable is "N"
-
-        // std::cout << TimeOfDay(timestamp).to_string() << " "
-        // << "[DEBUG]Order Executed With Price: match_number = " << match_number
-        // << ", stock_locate = " << stock_locate 
-        // << ", executed_shares = " << executed_shares
-        // << ", order_reference_number = " << order_reference_number
-        // << ", price: " << execution_price
-        // << std::endl;
-
         if (!printable) {
-            // std::cout << "[DEBUG]Not printable. Skipped" << std::endl;
             return;
         }
 
@@ -285,55 +276,6 @@ public:
         (trades that are erratic will be announced in trade break messages)
 */
 
-// class OrderCancelMessage: public BaseMessage {
-//     uint16_t stock_locate;
-//     // ignore tracking number 2 bytes, not interested
-//     uint64_t timestamp;
-//     uint64_t order_reference_number;
-//     uint32_t cancelled_shares;
-    
-//     std::weak_ptr<SystemData> sys_data;
-
-// public:
-//     OrderCancelMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
-//     void read_from_stream(std::istream& is) override {
-//         stock_locate = read_big_endian<2>(is);
-//         skip_bytes(2, is); // skip tracking number
-//         timestamp = read_big_endian<6>(is);
-//         order_reference_number = read_big_endian<8>(is);
-//         cancelled_shares = read_big_endian<4>(is);
-//     }
-
-//     void process() override {
-//         auto sys_data_ptr = sys_data.lock();
-//         assert(sys_data_ptr && "sys_data expired");
-//         sys_data_ptr->cancel_order_part(order_reference_number, cancelled_shares);
-//     }
-// };
-
-// class OrderDeleteMessage: public BaseMessage {
-//     uint16_t stock_locate;
-//     // ignore tracking number 2 bytes, not interested
-//     uint64_t timestamp;
-//     uint64_t order_reference_number;
-    
-//     std::weak_ptr<SystemData> sys_data;
-
-// public:
-//     OrderDeleteMessage(const std::shared_ptr<SystemData>& sd): sys_data{sd} {}
-//     void read_from_stream(std::istream& is) override {
-//         stock_locate = read_big_endian<2>(is);
-//         skip_bytes(2, is); // skip tracking number
-//         timestamp = read_big_endian<6>(is);
-//         order_reference_number = read_big_endian<8>(is);
-//     }
-//     void process() override {
-//         auto sys_data_ptr = sys_data.lock();
-//         assert(sys_data_ptr && "sys_data expired");
-//         sys_data_ptr->delete_order(order_reference_number);
-//     }
-// };
-
 class OrderReplaceMessage: public BaseMessage {
     uint16_t stock_locate;
     // ignore tracking number 2 bytes, not interested
@@ -357,27 +299,10 @@ public:
 
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
-        // std::cout << "[DEBUG]Replace order: " << std::endl;
-        Order old_order;
-        // std::cout << TimeOfDay(timestamp).to_string() << " "
-        // << "[DEBUG]Old order:" << "reference_number = " << old_order.order_reference_number
-        // << ", stock_locate = " << old_order.stock_locate
-        // << ", side = " << old_order.side
-        // << ", shares = " << old_order.shares
-        // << ", price = " << old_order.price
-        // << std::endl;
 
         sd.replace_order(
             original_order_reference_number, new_order_reference_number,
             shares, price);
-
-        // std::cout << "[DEBUG]New order:" << "reference_number = " << new_order.order_reference_number
-        // << ", stock_locate = " << new_order.stock_locate
-        // << ", side = " << new_order.side
-        // << ", shares = " << new_order.shares
-        // << ", price = " << new_order.price
-        // << std::endl;
-        
     }
 };
 
@@ -406,12 +331,6 @@ public:
 
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
-        // std::cout << TimeOfDay(timestamp).to_string() << " "
-        // << "[DEBUG]Trade: match_number = " << match_number
-        // << ", stock_locate = " << stock_locate 
-        // << ", shares = " << shares
-        // << ", price: " << price
-        // << std::endl;
 
         Trade trade{
             .stock_locate = stock_locate,
@@ -421,7 +340,6 @@ public:
         };
 
         sd.add_trade(std::move(trade));
-
     }
    
 };
@@ -450,12 +368,6 @@ public:
 
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
-        // std::cout << TimeOfDay(timestamp).to_string() << " "
-        // << "[DEBUG]Cross Trade: match_number = " << match_number
-        // << ", stock_locate = " << stock_locate 
-        // << ", shares = " << shares
-        // << ", price: " << cross_price
-        // << std::endl;
 
         Trade trade{
             .stock_locate = stock_locate,
@@ -465,7 +377,6 @@ public:
         };
 
         sd.add_trade(std::move(trade));
-
     }
 };
 
@@ -486,6 +397,7 @@ public:
 
     void process(SystemData& sd) override {
         sd.update_timestamp(timestamp);
+        
         sd.cancel_trade(match_number);
     }
    

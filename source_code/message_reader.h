@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <queue>
 #include <thread>
+#include <unordered_map>
 #include "message_types.h"
 
 class MessageReader {
@@ -54,6 +55,9 @@ private:
         while (!ifs_.eof()) {
             // Read message length
             uint16_t msg_len = read_big_endian<2>(ifs_);
+            if (msg_len == 0) {
+                continue;
+            }
 
             // Read first byte: message type
             char msg_type;
@@ -118,6 +122,7 @@ private:
                     break;
                 }
                 default: {
+                    // std::cout << "Skip message type: " << msg_type << ", len: " << msg_len << std::endl;
                     ifs_.ignore(msg_len - 1);
                     continue; // read and discard, skip message
                     break;

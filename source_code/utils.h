@@ -19,6 +19,9 @@ inline int get_hour_by_timestamp(uint64_t timestamp) {
     return (timestamp / 1'000'000'000) / 3600;
 }
 
+/*  
+Not used in the end but was good for debugging:
+*/
 class TimeOfDay {
 private:
     std::chrono::nanoseconds timestamp_;
@@ -42,7 +45,6 @@ public:
            << std::setw(2) << std::setfill('0') << minutes.count() << ":" 
            << std::setw(2) << std::setfill('0') << seconds.count() << "."
            << std::setw(9) << std::setfill('0') << nanoseconds.count()
-        //    << "(" << timestamp_.count() << ")"
            ;
         return ss.str();
     }

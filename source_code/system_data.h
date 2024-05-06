@@ -18,13 +18,8 @@ public:
     SecurityStats(const uint16_t locate):
     stock_locate{locate}, traded_shares{0}, total_traded_value{0} {}
     bool handle_trade(const Trade& trade) {
-        // std::cout << "[DEBUG]Stock_locate: " << std::endl;
-        // std::cout << "shares: " << traded_shares << " -> ";
         traded_shares += trade.shares;
-        // std::cout << traded_shares << ", ";
-        // std::cout << "traded value: " << total_traded_value << " -> ";
         total_traded_value += trade.price * trade.shares;
-        // std::cout << total_traded_value << std::endl;
 
         return true;
     }
@@ -37,6 +32,7 @@ public:
     inline float get_vwap() const {
         return traded_shares == 0 ? 0 : total_traded_value / traded_shares;
     }
+
 };
 
 class SystemData {

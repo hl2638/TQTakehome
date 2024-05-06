@@ -13,7 +13,7 @@ int main(int argc, char** argv)
     const std::string output_dir_path = (argc> 2) ? argv[2] : "./output/vwap/";
 
     if (argc <= 2) {
-        std::cout << "Usage: " << argv[0] << " [<data_file_path> [<output_dir_path (for multiple output files)>]]" << std::endl;
+        std::cout << "HINT: Usage: " << argv[0] << " [<data_file_path> [<output_dir_path (for multiple output files)>]]" << std::endl;
     }
 
     std::cout << "Assuming data file is: " << data_file_path << std::endl;
