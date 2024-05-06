@@ -205,7 +205,7 @@ private:
         }
         for (const auto& [locate, stats]: locate_to_sec_stats_map) {
             os_ << std::left << std::setw(8) << locate_to_symbol_map.at(locate) << " "
-            << std::setprecision(4) << stats.get_vwap()
+            << std::fixed << std::setprecision(4) << stats.get_vwap()
             << std::endl;
         }
         os_ << "-------------------------------" << std::endl << std::endl;
