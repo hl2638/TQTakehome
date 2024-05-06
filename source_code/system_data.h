@@ -34,7 +34,7 @@ public:
     }
 
     inline float get_vwap() const {
-        return total_traded_value / traded_shares;
+        return traded_shares == 0 ? 0 : total_traded_value / traded_shares;
     }
 };
 
@@ -208,7 +208,7 @@ private:
             << std::setprecision(4) << stats.get_vwap()
             << std::endl;
         }
-        std::cout << "-------------------------------" << std::endl << std::endl;
+        os_ << "-------------------------------" << std::endl << std::endl;
     }
 };
 

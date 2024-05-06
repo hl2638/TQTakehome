@@ -54,8 +54,9 @@ private:
             is_.read(&msg_type, 1);
 
             msg_count++;
+            // [DEBUG]
             if (msg_count % 10'000'000 == 0) {
-                std::cout << "[DEBUG]Read " << msg_count << " messages." << std::endl;
+                std::cout << "Read " << msg_count << " messages." << std::endl;
             }
             
             std::unique_ptr<BaseMessage> new_msg;
